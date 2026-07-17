@@ -531,7 +531,7 @@ void loop() {
   }
 
   // ---------------- OLED 控制 ----------------
-  if (now - lastInteraction >= SCREEN_TIMEOUT) turnDisplayOffNow();
+  if (millis() - lastInteraction >= SCREEN_TIMEOUT) turnDisplayOffNow();
   static unsigned long lastOLEDUpdate = 0;
   if (screenOn && now - lastOLEDUpdate >= 500) {
     updateOLED(lastDSTemp, lastNTCTemp);
