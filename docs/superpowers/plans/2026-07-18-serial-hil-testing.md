@@ -1,6 +1,6 @@
 # Serial HIL Testing System Implementation Plan
 
-> **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
+> **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [x]`) syntax for tracking.
 
 **Goal:** 通过 ESP32-C3 自身 USB 串口提供隔离、安全、实时的 HIL 指令测试，并由 Python 工具执行场景、显示状态和生成报告。
 
@@ -29,9 +29,9 @@
 **Interfaces:**
 - Produces: `HilCommandType`、`HilCommand`、`HilParseResult`、`parseHilCommand()`。
 
-- [ ] **Step 1:** 先写编译期/构建契约并运行 `pio run -e esp32-c3-hil`，确认缺少解析器实现时失败。
-- [ ] **Step 2:** 实现固定缓冲、无动态分配的逐行解析器和稳定错误码。
-- [ ] **Step 3:** 分别运行正式环境和 HIL 环境构建，要求均成功。
+- [x] **Step 1:** 先写编译期/构建契约并运行 `pio run -e esp32-c3-hil`，确认缺少解析器实现时失败。
+- [x] **Step 2:** 实现固定缓冲、无动态分配的逐行解析器和稳定错误码。
+- [x] **Step 3:** 分别运行正式环境和 HIL 环境构建，要求均成功。
 
 ### Task 2: 固件注入、遥测与输出安全锁
 
@@ -43,11 +43,11 @@
 **Interfaces:**
 - Produces: NTC/DS 输入模式、输出锁、10 秒心跳看门狗、串口轮询、JSON ACK/STATUS。
 
-- [ ] **Step 1:** 增加 HIL 运行状态和默认锁定测试，先使集成契约失败。
-- [ ] **Step 2:** 将 NTC/DS 注入接入现有业务输入点，按键指令调用现有业务回调。
-- [ ] **Step 3:** 在 `applyOutputState()` 应用安全锁；锁定时实际输出低但保留期望状态。
-- [ ] **Step 4:** 实现完整命令分派、状态 JSON、复位、NVS 清除、重启和心跳锁定。
-- [ ] **Step 5:** 构建两个环境并确认正式固件不包含 `HIL PING` 命令文本。
+- [x] **Step 1:** 增加 HIL 运行状态和默认锁定测试，先使集成契约失败。
+- [x] **Step 2:** 将 NTC/DS 注入接入现有业务输入点，按键指令调用现有业务回调。
+- [x] **Step 3:** 在 `applyOutputState()` 应用安全锁；锁定时实际输出低但保留期望状态。
+- [x] **Step 4:** 实现完整命令分派、状态 JSON、复位、NVS 清除、重启和心跳锁定。
+- [x] **Step 5:** 构建两个环境并确认正式固件不包含 `HIL PING` 命令文本。
 
 ### Task 3: Python 协议、传输与场景运行器
 
@@ -62,9 +62,9 @@
 **Interfaces:**
 - Produces: `HilProtocolClient`、`SerialTransport`、`ScenarioRunner` 和 JSON/HTML 报告。
 
-- [ ] **Step 1:** 为请求序号、JSON 校验、超时、断言和清理写失败测试。
-- [ ] **Step 2:** 实现最小协议、串口和场景核心使测试通过。
-- [ ] **Step 3:** 运行 `python -m unittest discover -s hil/tests -v`。
+- [x] **Step 1:** 为请求序号、JSON 校验、超时、断言和清理写失败测试。
+- [x] **Step 2:** 实现最小协议、串口和场景核心使测试通过。
+- [x] **Step 3:** 运行 `python -m unittest discover -s hil/tests -v`。
 
 ### Task 4: 场景、仪表板与文档
 
@@ -81,13 +81,13 @@
 **Interfaces:**
 - Produces: 串口选择、状态轮询、手动安全控制、场景运行、实时日志及报告入口。
 
-- [ ] **Step 1:** 实现 tkinter 仪表板，UI 只调用测试核心，不复制协议逻辑。
-- [ ] **Step 2:** 添加握手、安全锁、温控和真实 5 分钟风扇冷却场景。
-- [ ] **Step 3:** 完成刷写、连接、指令、场景、安全和限制文档。
+- [x] **Step 1:** 实现 tkinter 仪表板，UI 只调用测试核心，不复制协议逻辑。
+- [x] **Step 2:** 添加握手、安全锁、温控和真实 5 分钟风扇冷却场景。
+- [x] **Step 3:** 完成刷写、连接、指令、场景、安全和限制文档。
 
 ### Task 5: 完整验证与发布
 
-- [ ] **Step 1:** 运行全部 Python 测试和现有回归测试。
-- [ ] **Step 2:** 对正式与 HIL 环境分别执行 clean build。
-- [ ] **Step 3:** 检查正式二进制不含 HIL 命令标识、工作区和文档一致性。
-- [ ] **Step 4:** 提交 `feat: add serial HIL testing system`，推送并核对远端哈希。
+- [x] **Step 1:** 运行全部 Python 测试和现有回归测试。
+- [x] **Step 2:** 对正式与 HIL 环境分别执行 clean build。
+- [x] **Step 3:** 检查正式二进制不含 HIL 命令标识、工作区和文档一致性。
+- [x] **Step 4:** 提交 `feat: add serial HIL testing system`，推送并核对远端哈希。
