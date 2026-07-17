@@ -76,6 +76,19 @@ pio device monitor
 
 串口配置为 115200 baud。固件默认 `LOGON = false`，此时不会初始化串口；需要日志时可在本地改为 `true` 后重新构建，但不要把调试改动误认为迁移基线。
 
+## 串口 HIL 测试
+
+项目提供独立的 `esp32-c3-hil` 构建环境，可在同一块 ESP32-C3 上运行完整主程序，同时通过 USB 串口
+注入温度、触发按键、查看内部状态并运行自动场景。HIL 默认锁定压缩机和风扇实际输出。
+
+```powershell
+pio run -e esp32-c3-hil -t upload
+python -m pip install -r hil/requirements.txt
+python -m hil.dashboard --port COM5
+```
+
+详细协议、安全限制和场景说明见 [`docs/hil-testing.md`](docs/hil-testing.md)。
+
 ## 使用说明
 
 - 默认设定温度为 -10 °C，可调范围为 -30 °C 至 20 °C。

@@ -1,0 +1,8 @@
+{
+  "name": "smoke",
+  "steps": [
+    {"command": "PING", "expect": {"ok": true}},
+    {"command": "RESET", "expect": {"ok": true}},
+    {"command": "STATUS", "expect": {"ok": true, "outputs_unlocked": false, "actual_relay_level": 0, "actual_fan_level": 0}}
+  ]
+}

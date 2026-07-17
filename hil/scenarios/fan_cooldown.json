@@ -1,0 +1,13 @@
+{
+  "name": "fan_cooldown",
+  "steps": [
+    {"command": "RESET", "expect": {"ok": true}},
+    {"command": "NTC VALUE 10", "expect": {"ok": true}},
+    {"wait_seconds": 1.5, "heartbeat_seconds": 0.5},
+    {"command": "NTC FAULT", "expect": {"ok": true}},
+    {"wait_seconds": 6.0, "heartbeat_seconds": 1.0},
+    {"command": "STATUS", "expect": {"compressor": "off", "fan": "cooldown", "sensor_fault": true}},
+    {"wait_seconds": 300.0, "heartbeat_seconds": 2.0},
+    {"command": "STATUS", "expect": {"compressor": "off", "fan": "off", "sensor_fault": true}}
+  ]
+}

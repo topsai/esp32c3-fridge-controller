@@ -1,0 +1,9 @@
+{
+  "name": "thermostat",
+  "steps": [
+    {"command": "RESET", "expect": {"ok": true}},
+    {"command": "NTC VALUE 10", "expect": {"ok": true}},
+    {"wait_seconds": 1.5, "heartbeat_seconds": 0.5},
+    {"command": "STATUS", "expect": {"compressor": "running", "fan": "following", "outputs_unlocked": false}}
+  ]
+}

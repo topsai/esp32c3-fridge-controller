@@ -8,6 +8,10 @@
 #include <math.h>
 #include <Preferences.h>
 #include "fridge_state_machine.h"
+#ifdef FRIDGE_HIL
+#include "hil_protocol.h"
+#include "hil_runtime.h"
+#endif
 bool LOGON = false;  // 日志状态（ true=开） false=关
 
 
@@ -91,6 +95,13 @@ int NTC_ERR_COUNT = 0;  // NTC 错误统计
 FridgeOutputs fridgeOutputs = initialFridgeOutputs();
 
 void applyOutputState() {
+#ifdef FRIDGE_HIL
+  if (!hilRuntime().outputsUnlocked) {
+    digitalWrite(RELAY_PIN, LOW);
+    digitalWrite(FAN_PIN, LOW);
+    return;
+  }
+#endif
   digitalWrite(RELAY_PIN, fridgeOutputs.compressor == CompressorState::Running ? HIGH : LOW);
   digitalWrite(FAN_PIN, fridgeOutputs.fan == FanState::Off ? LOW : HIGH);
 }
@@ -116,6 +127,15 @@ const float NTC_ALPHA = 0.05f;  // 平滑系数 0~1，越小越平滑
 float filteredNTCTemp = NAN;    // EWMA 滤波后的温度
 // 读取 NTC 温度（带 Steinhart-Hart 公式和偏移校准）
 float readNTCTempC() {
+#ifdef FRIDGE_HIL
+  if (hilRuntime().ntcMode == HilInputMode::InjectedFault) return NAN;
+  if (hilRuntime().ntcMode == HilInputMode::InjectedValue) {
+    float newTemp = hilRuntime().ntcValue;
+    if (isnan(filteredNTCTemp)) filteredNTCTemp = newTemp;
+    filteredNTCTemp = NTC_ALPHA * newTemp + (1.0f - NTC_ALPHA) * filteredNTCTemp;
+    return filteredNTCTemp;
+  }
+#endif
   int raw = analogRead(NTC_PIN);               // ADC 读取
   if (raw <= 0 || raw >= ADC_MAX) return NAN;  // 越界则无效
   float v = raw * VCC / ADC_MAX;               // 电压
@@ -340,6 +360,121 @@ void buttonDownLongPress() {
   }
 }
 
+#ifdef FRIDGE_HIL
+void sendHilAck(uint32_t sequence, bool ok, const char* error = nullptr) {
+  Serial.printf("{\"type\":\"ack\",\"sequence\":%lu,\"ok\":%s",
+                static_cast<unsigned long>(sequence), ok ? "true" : "false");
+  if (error != nullptr) Serial.printf(",\"error\":\"%s\"", error);
+  Serial.println("}");
+}
+
+const char* hilInputModeName(HilInputMode mode) {
+  if (mode == HilInputMode::InjectedValue) return "value";
+  if (mode == HilInputMode::InjectedFault) return "fault";
+  return "physical";
+}
+
+void printHilFloat(float value) {
+  if (isnan(value)) Serial.print("null");
+  else Serial.print(value, 3);
+}
+
+void sendHilStatus(uint32_t sequence) {
+  const HilRuntimeState& hil = hilRuntime();
+  uint32_t remaining = 0;
+  if (fridgeOutputs.fan == FanState::Cooldown) {
+    const uint32_t elapsed = static_cast<uint32_t>(millis() - fridgeOutputs.cooldownStartedAt);
+    remaining = elapsed >= FAN_COOLDOWN_MS ? 0u : FAN_COOLDOWN_MS - elapsed;
+  }
+  Serial.printf("{\"type\":\"status\",\"sequence\":%lu,\"ok\":true,\"protocol\":1,\"uptime_ms\":%lu,",
+                static_cast<unsigned long>(sequence), static_cast<unsigned long>(millis()));
+  Serial.printf("\"ntc_mode\":\"%s\",\"ds_mode\":\"%s\",\"ntc\":", hilInputModeName(hil.ntcMode), hilInputModeName(hil.dsMode));
+  printHilFloat(lastNTCTemp);
+  Serial.print(",\"ds18b20\":");
+  printHilFloat(lastDSTemp);
+  Serial.printf(",\"setpoint\":%.1f,\"compressor\":\"%s\",\"fan\":\"%s\",\"fan_cooldown_remaining_ms\":%lu,",
+                static_cast<float>(setpoint_x2) / 2.0f,
+                fridgeOutputs.compressor == CompressorState::Running ? "running" : "off",
+                fridgeOutputs.fan == FanState::FollowingCompressor ? "following" : (fridgeOutputs.fan == FanState::Cooldown ? "cooldown" : "off"),
+                static_cast<unsigned long>(remaining));
+  Serial.printf("\"sensor_fault\":%s,\"ntc_error_count\":%d,\"display\":\"%s\",\"outputs_unlocked\":%s,",
+                sensorFault ? "true" : "false", NTC_ERR_COUNT, screenOn ? "on" : "off", hil.outputsUnlocked ? "true" : "false");
+  Serial.printf("\"expected_relay_level\":%d,\"expected_fan_level\":%d,\"actual_relay_level\":%d,\"actual_fan_level\":%d}\n",
+                fridgeOutputs.compressor == CompressorState::Running ? 1 : 0,
+                fridgeOutputs.fan == FanState::Off ? 0 : 1,
+                digitalRead(RELAY_PIN), digitalRead(FAN_PIN));
+}
+
+void resetHilSession() {
+  resetHilRuntime(millis());
+  fridgeOutputs = initialFridgeOutputs();
+  filteredNTCTemp = NAN;
+  lastNTCTemp = NAN;
+  lastDSTemp = NAN;
+  NTC_ERR_COUNT = 0;
+  sensorFault = false;
+  applyOutputState();
+}
+
+void handleHilCommand(const HilCommand& command) {
+  HilRuntimeState& hil = hilRuntime();
+  hil.lastCommandAt = millis();
+  hil.lastSequence = command.sequence;
+  switch (command.type) {
+    case HilCommandType::Ping: sendHilAck(command.sequence, true); break;
+    case HilCommandType::Status: sendHilStatus(command.sequence); break;
+    case HilCommandType::OutputsUnlock: hil.outputsUnlocked = true; applyOutputState(); sendHilAck(command.sequence, true); break;
+    case HilCommandType::OutputsLock: hil.outputsUnlocked = false; applyOutputState(); sendHilAck(command.sequence, true); break;
+    case HilCommandType::NtcPhysical: hil.ntcMode = HilInputMode::Physical; filteredNTCTemp = NAN; sendHilAck(command.sequence, true); break;
+    case HilCommandType::NtcValue: hil.ntcMode = HilInputMode::InjectedValue; hil.ntcValue = command.value; filteredNTCTemp = NAN; sendHilAck(command.sequence, true); break;
+    case HilCommandType::NtcFault: hil.ntcMode = HilInputMode::InjectedFault; sendHilAck(command.sequence, true); break;
+    case HilCommandType::DsPhysical: hil.dsMode = HilInputMode::Physical; sendHilAck(command.sequence, true); break;
+    case HilCommandType::DsValue: hil.dsMode = HilInputMode::InjectedValue; hil.dsValue = command.value; sendHilAck(command.sequence, true); break;
+    case HilCommandType::DsFault: hil.dsMode = HilInputMode::InjectedFault; sendHilAck(command.sequence, true); break;
+    case HilCommandType::ButtonUpClick: buttonClickUp(); sendHilAck(command.sequence, true); break;
+    case HilCommandType::ButtonDownClick: buttonClickDown(); sendHilAck(command.sequence, true); break;
+    case HilCommandType::ButtonUpLong:
+    case HilCommandType::ButtonDownLong:
+      hil.longPressDirection = command.type == HilCommandType::ButtonUpLong ? 1 : -1;
+      hil.longPressRemaining = command.durationMs / 200u;
+      hil.nextLongPressAt = millis();
+      sendHilAck(command.sequence, true);
+      break;
+    case HilCommandType::DisplayWake: turnDisplayOnNow(); sendHilAck(command.sequence, true); break;
+    case HilCommandType::NvsClear:
+      prefs.begin("fridge", false); prefs.clear(); prefs.end();
+      sendHilAck(command.sequence, true);
+      break;
+    case HilCommandType::Reset: resetHilSession(); sendHilAck(command.sequence, true); break;
+    case HilCommandType::Reboot:
+      sendHilAck(command.sequence, true); Serial.flush(); delay(50); ESP.restart(); break;
+    default: sendHilAck(command.sequence, false, "unknown_command"); break;
+  }
+}
+
+void pollHil() {
+  HilRuntimeState& hil = hilRuntime();
+  char line[HIL_MAX_LINE_LENGTH];
+  while (readHilLine(Serial, line, sizeof(line))) {
+    HilCommand command;
+    const HilParseResult result = parseHilCommand(line, command);
+    if (result == HilParseResult::Ok) handleHilCommand(command);
+    else sendHilAck(command.sequence, false, hilParseError(result));
+  }
+  const uint32_t now = millis();
+  if (hil.longPressRemaining > 0 && static_cast<int32_t>(now - hil.nextLongPressAt) >= 0) {
+    if (hil.longPressDirection > 0) buttonUpLongPress(); else buttonDownLongPress();
+    hil.longPressRemaining--;
+    hil.nextLongPressAt = now + 201u;
+  }
+  if (hil.outputsUnlocked && static_cast<uint32_t>(now - hil.lastCommandAt) >= HIL_WATCHDOG_MS) {
+    hil.outputsUnlocked = false;
+    applyOutputState();
+    Serial.println("{\"type\":\"event\",\"event\":\"outputs_locked_by_watchdog\"}");
+  }
+}
+#endif
+
 // ---------------- 打印调试 ----------------
 void PrintLog(const char* on, const char* reason) {
   if (LOGON) Serial.println(
@@ -354,6 +489,12 @@ void PrintLog(const char* on, const char* reason) {
 }
 
 void DS18B20Read(unsigned long now) {
+#ifdef FRIDGE_HIL
+  if (hilRuntime().dsMode != HilInputMode::Physical) {
+    lastDSTemp = hilRuntime().dsMode == HilInputMode::InjectedFault ? NAN : hilRuntime().dsValue;
+    return;
+  }
+#endif
   // ---------------- DS18B20 非阻塞读取 ----------------
   if (!dsRequestPending && now - lastDSRequest >= 5000) {
     sensors.requestTemperatures();  // 发起转换
@@ -389,7 +530,12 @@ void DS18B20Read(unsigned long now) {
 
 // ---------------- setup ----------------
 void setup() {
+#ifdef FRIDGE_HIL
+  Serial.begin(115200);
+  resetHilRuntime(millis());
+#else
   if (LOGON) Serial.begin(115200);
+#endif
 
   // 开机读取 NVS
   prefs.begin("fridge", false);
@@ -462,6 +608,9 @@ void loop() {
   // 更新按钮状态
   button1.tick();
   button2.tick();
+#ifdef FRIDGE_HIL
+  pollHil();
+#endif
   updateFanLogic(now);
 
 
