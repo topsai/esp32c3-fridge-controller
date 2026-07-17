@@ -37,6 +37,18 @@ CD6798A846E9CEFEC89841E054A729D8D94593F0D4EE9E611E2773E11E6F59B0
 
 修复只将 OLED 超时判断的当前时间改为回调之后现场读取的 `millis()`。按键、温控、显示内容和超时时长均未改变。
 
+### 压缩机停机后的风扇散热状态机
+
+原逻辑直接读取继电器 GPIO，让风扇与压缩机同时开关。后续需求要求压缩机停止后风扇继续运行 5 分钟。
+
+新增 `include/fridge_state_machine.h`，以纯 C++ 状态转换集中管理压缩机 `Off/Running` 和风扇
+`Off/FollowingCompressor/Cooldown`。温控与故障处理仍通过原有 `setRelayPhysical(bool)` 接口发出请求，
+GPIO 的高低有效语义没有改变。
+
+`src/state_machine_contract.cpp` 使用编译期断言验证初始状态、启停、5 分钟边界、重复停机、冷却中重启和
+`millis()` 回绕。状态机详细设计见
+[`2026-07-18-compressor-fan-state-machine-design.md`](superpowers/specs/2026-07-18-compressor-fan-state-machine-design.md)。
+
 ## 已验证的构建环境
 
 - PlatformIO Core 6.1.19

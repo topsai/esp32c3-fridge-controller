@@ -7,6 +7,7 @@
 #include <Adafruit_SSD1306.h>
 #include <math.h>
 #include <Preferences.h>
+#include "fridge_state_machine.h"
 bool LOGON = false;  // 日志状态（ true=开） false=关
 
 
@@ -61,7 +62,6 @@ const unsigned long LOGON_MS = 30000UL;    // 日志打印间隔时间 30s
 bool needOff = 0;
 bool needOn = 1;
 // ---------------- 状态变量 ----------------
-bool compressorOn = true;             // 压缩机状态（true=开）
 unsigned long relayChangeMillis = 0;  // 最近一次切换时间
 float ntcOffset = 0.0f;               // NTC 偏移校准值
 
@@ -88,29 +88,21 @@ int NTC_ERR_COUNT = 0;  // NTC 错误统计
 // ---------------- 辅助函数 ----------------
 
 // 控制继电器和风扇物理引脚
-// bool compressorOn = false;           // 压缩机状态
-bool fanOn = false;                  // 风扇状态
-unsigned long fanOffDelayStart = 0;  // 记录风扇延时关闭开始时间
-void updateFanLogic() {
-  if (digitalRead(RELAY_PIN)) {
-    digitalWrite(FAN_PIN, HIGH);
-    fanOn = true;
-  } else {
-    digitalWrite(FAN_PIN, LOW);
-    fanOn = false;
-  }
+FridgeOutputs fridgeOutputs = initialFridgeOutputs();
+
+void applyOutputState() {
+  digitalWrite(RELAY_PIN, fridgeOutputs.compressor == CompressorState::Running ? HIGH : LOW);
+  digitalWrite(FAN_PIN, fridgeOutputs.fan == FanState::Off ? LOW : HIGH);
+}
+
+void updateFanLogic(unsigned long now) {
+  fridgeOutputs = advanceFanTimer(fridgeOutputs, now);
+  applyOutputState();
 }
 // 继电器控制函数
 void setRelayPhysical(bool state) {
-  if (state) {
-    // 开启压缩机
-    digitalWrite(RELAY_PIN, HIGH);
-    compressorOn = true;
-  } else {
-    // 关闭压缩机
-    digitalWrite(RELAY_PIN, LOW);
-    compressorOn = false;
-  }
+  fridgeOutputs = requestCompressor(fridgeOutputs, state, millis());
+  applyOutputState();
 }
 // void setRelayPhysical(bool status) {
 //   digitalWrite(RELAY_PIN, status ? LOW : HIGH);  // 压缩机低电平有效
@@ -248,8 +240,8 @@ void updateOLED(float dsTemp, float ntcTemp) {
 
   // 第四行：压缩机 & 风扇状态
   snprintf(buf, sizeof(buf), "Comp:%s Fan:%s",
-           compressorOn ? "ON " : "OFF",
-           fanOn ? "ON " : "OFF");
+           fridgeOutputs.compressor == CompressorState::Running ? "ON " : "OFF",
+           fridgeOutputs.fan == FanState::Off ? "OFF" : "ON ");
   drawLineNoRefresh(lineY[2], 3, buf);
 
   // 第五行：故障状态
@@ -385,7 +377,7 @@ void DS18B20Read(unsigned long now) {
     if (LOGON) Serial.print("lastDSTemp:");
     if (LOGON) Serial.print(lastDSTemp);
     if (LOGON) Serial.print("-compressorOn:");
-    if (LOGON) Serial.print(compressorOn);
+    if (LOGON) Serial.print(fridgeOutputs.compressor == CompressorState::Running);
     if (LOGON) Serial.print("-needOff:");
     if (LOGON) Serial.print(needOff);
     if (LOGON) Serial.print("-needOn:");
@@ -470,6 +462,7 @@ void loop() {
   // 更新按钮状态
   button1.tick();
   button2.tick();
+  updateFanLogic(now);
 
 
   // 只有温度设定真正变化且未保存才写入 NVS
@@ -484,7 +477,6 @@ void loop() {
   // ---------------- NTC 读取 ----------------
   // 读取新的温度值
   if (now - lastNTCRead >= 500) {  // 每500ms读一次
-    updateFanLogic();              // 控制风扇开关
     float newTemp = readNTCTempC();
     if (!isnan(newTemp)) {
       lastNTCTemp = newTemp;
