@@ -80,4 +80,4 @@
 - [x] Run `python -m unittest discover -s tests -v` and `python -m unittest discover -s hil/tests -v`.
 - [x] Clean-build release, HIL, and OTA environments and inspect firmware sizes.
 - [x] Verify `include/ota_config.local.h` is ignored and absent from tracked files.
-- [ ] Review the diff, commit intentionally, push `main`, and verify the remote commit.
+- [x] Review the diff, commit intentionally, push `main`, and verify the remote commit.
