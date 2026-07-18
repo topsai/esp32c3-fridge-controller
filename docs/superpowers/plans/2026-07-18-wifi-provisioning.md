@@ -154,6 +154,6 @@ Run `python -m unittest discover -s tests -v`, `python -m unittest discover -s h
 
 Run clean builds for `esp32-c3-devkitm-1`, `esp32-c3-hil`, and `esp32-c3-ota`. Record each firmware byte count and fail completion if any exceeds 1310720 bytes.
 
-- [ ] **Step 4: Review, commit, push, and verify remote**
+- [x] **Step 4: Review, commit, push, and verify remote**
 
 Mark completed checkboxes, commit `docs: complete Wi-Fi provisioning guide`, push `main`, and require `git ls-remote origin refs/heads/main` to match local `HEAD`. Report captive-portal and radio behavior as awaiting physical ESP32-C3 verification.
