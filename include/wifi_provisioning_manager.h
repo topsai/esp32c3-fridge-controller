@@ -26,6 +26,7 @@ class WifiProvisioningManager {
   void startSavedConnection(uint32_t now);
   void startPortal(uint32_t now, bool clearCredentials);
   void stopPortal();
+  void clearCredentialsAfterFailedPortal();
   void generatePortalIdentity();
 
   WiFiManager manager_;

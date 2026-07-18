@@ -80,6 +80,11 @@ void WifiProvisioningManager::stopPortal() {
   apPassword_ = "";
 }
 
+void WifiProvisioningManager::clearCredentialsAfterFailedPortal() {
+  manager_.resetSettings();
+  stopPortal();
+}
+
 void WifiProvisioningManager::startSavedConnection(uint32_t now) {
   stopPortal();
   WiFi.mode(WIFI_STA);
@@ -114,7 +119,7 @@ void WifiProvisioningManager::poll(uint32_t now) {
         stopPortal();
         status_ = WifiProvisioningStatus(WifiProvisioningState::Connected, now);
       } else if (wifiPortalTimedOut(status_, now) || !manager_.getConfigPortalActive()) {
-        stopPortal();
+        clearCredentialsAfterFailedPortal();
         status_ = wifiAfterPortalTimeout(status_, now);
       }
       return;

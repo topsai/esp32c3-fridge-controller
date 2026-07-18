@@ -63,6 +63,8 @@ HIL 10 OUTPUTS LOCK
 - `outputs_unlocked`：是否允许真实输出跟随期望状态。
 - `ota_state`、`ota_progress`：OTA 服务状态和升级百分比；
 - `wifi_connected`、`ota_ip`：Wi-Fi 连接状态和局域网地址，不包含任何凭据。
+- `wifi_state`、`wifi_provisioning`：STA/退避/配网状态；
+- `wifi_ap_ssid`：仅配网期间显示临时热点名称，不返回临时热点密码。
 
 这样可以在不带动负载的情况下验证完整温控逻辑。
 

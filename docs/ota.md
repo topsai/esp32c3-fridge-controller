@@ -2,6 +2,9 @@
 
 项目使用 ArduinoOTA 在同一局域网内升级 ESP32-C3。没有配置凭据时，OTA 保持 `disabled`，冰箱控制逻辑照常运行。OTA 不是网页上传服务，也不会开放 HTTP 管理页面。
 
+家庭 Wi-Fi 可通过手机配网保存，参见 [`wifi-provisioning.md`](wifi-provisioning.md)。Wi-Fi 已连接但 OTA 主机名或 OTA 密码为空时，
+联网仍正常，只有 OTA 保持 `disabled`。
+
 ## 安全模型
 
 - OTA 必须配置密码；不要使用示例密码。
