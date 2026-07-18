@@ -26,6 +26,7 @@ void WifiProvisioningManager::begin(uint32_t now) {
 
   WiFi.mode(WIFI_STA);
   WiFi.setAutoReconnect(false);
+  if (std::strlen(FRIDGE_OTA_HOSTNAME) > 0) WiFi.setHostname(FRIDGE_OTA_HOSTNAME);
 
   if (manager_.getWiFiIsSaved()) {
     startSavedConnection(now);

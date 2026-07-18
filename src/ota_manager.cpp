@@ -12,9 +12,7 @@ OtaManager::OtaManager()
     : status_(otaInitialStatus(false)), onStart_(nullptr), serviceStarted_(false) {}
 
 bool OtaManager::configured() const {
-  return std::strlen(FRIDGE_WIFI_SSID) > 0 &&
-         std::strlen(FRIDGE_WIFI_PASSWORD) > 0 &&
-         std::strlen(FRIDGE_OTA_HOSTNAME) > 0 &&
+  return std::strlen(FRIDGE_OTA_HOSTNAME) > 0 &&
          std::strlen(FRIDGE_OTA_PASSWORD) > 0;
 }
 
@@ -24,8 +22,6 @@ void OtaManager::begin(uint32_t now, OtaStartCallback onStart) {
     status_ = otaInitialStatus(false);
     return;
   }
-  WiFi.mode(WIFI_STA);
-  WiFi.setHostname(FRIDGE_OTA_HOSTNAME);
   startConnection(now);
 }
 
@@ -34,8 +30,6 @@ void OtaManager::startConnection(uint32_t now) {
     ArduinoOTA.end();
     serviceStarted_ = false;
   }
-  WiFi.disconnect();
-  WiFi.begin(FRIDGE_WIFI_SSID, FRIDGE_WIFI_PASSWORD);
   status_ = otaBeginConnecting(now);
 }
 
@@ -72,14 +66,13 @@ void OtaManager::poll(uint32_t now) {
       return;
     case OtaState::Connecting:
       if (WiFi.status() == WL_CONNECTED) startService(now);
-      else if (otaConnectionTimedOut(status_, now)) {
-        WiFi.disconnect();
-        enterError(now, -1);
-      }
+      else if (otaConnectionTimedOut(status_, now)) enterError(now, -1);
       return;
     case OtaState::Ready:
       if (WiFi.status() != WL_CONNECTED) {
-        enterError(now, -2);
+        ArduinoOTA.end();
+        serviceStarted_ = false;
+        startConnection(now);
         return;
       }
       ArduinoOTA.handle();
@@ -92,10 +85,12 @@ void OtaManager::poll(uint32_t now) {
       ArduinoOTA.handle();
       return;
     case OtaState::Error:
-      if (WiFi.status() == WL_CONNECTED && serviceStarted_ &&
-          static_cast<uint32_t>(now - status_.stateStartedAt) >= OTA_ERROR_DISPLAY_MS) {
-        status_ = OtaStatus(OtaState::Ready, now, 0u, 0);
-        ArduinoOTA.handle();
+      if (WiFi.status() == WL_CONNECTED) {
+        if (!serviceStarted_) startService(now);
+        else if (static_cast<uint32_t>(now - status_.stateStartedAt) >= OTA_ERROR_DISPLAY_MS) {
+          status_ = OtaStatus(OtaState::Ready, now, 0u, 0);
+          ArduinoOTA.handle();
+        }
       } else if (otaRetryDue(status_, now)) {
         startConnection(now);
       }

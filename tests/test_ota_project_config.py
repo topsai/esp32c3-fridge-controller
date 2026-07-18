@@ -42,6 +42,13 @@ class OtaProjectConfigTest(unittest.TestCase):
         self.assertIn("setConfigPortalBlocking(false)", manager)
         self.assertNotIn("autoConnect(", manager)
 
+    def test_ota_manager_does_not_own_wifi_connections(self):
+        source = (ROOT / "src" / "ota_manager.cpp").read_text(encoding="utf-8")
+        self.assertNotIn("WiFi.begin(", source)
+        self.assertNotIn("WiFi.disconnect(", source)
+        self.assertNotIn("FRIDGE_WIFI_SSID", source)
+        self.assertNotIn("FRIDGE_WIFI_PASSWORD", source)
+
 
 if __name__ == "__main__":
     unittest.main()

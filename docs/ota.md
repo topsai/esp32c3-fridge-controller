@@ -29,7 +29,8 @@ Copy-Item include/ota_config.example.h include/ota_config.local.h
 #define FRIDGE_OTA_PASSWORD "单独设置的高强度 OTA 密码"
 ```
 
-四项都必须非空。主机名只写名称，不加 `.local`。建议 OTA 密码与 Wi-Fi 密码不同。
+OTA 主机名和 OTA 密码必须非空。Wi-Fi 名称和密码仅作为旧配置迁移入口；新设备可通过开机配网页面把网络凭据保存到 NVS。
+主机名只写名称，不加 `.local`。建议 OTA 密码与 Wi-Fi 密码不同。
 
 ## 首次 USB 烧录
 
