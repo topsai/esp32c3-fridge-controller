@@ -10,7 +10,7 @@ class ScreenTimeoutRegressionTest(unittest.TestCase):
         source = SOURCE.read_text(encoding="utf-8")
 
         self.assertIn(
-            "if (millis() - lastInteraction >= SCREEN_TIMEOUT)",
+            "millis() - lastInteraction >= SCREEN_TIMEOUT",
             source,
             "OLED timeout must sample millis() after button callbacks update lastInteraction",
         )
@@ -18,6 +18,11 @@ class ScreenTimeoutRegressionTest(unittest.TestCase):
             "if (now - lastInteraction >= SCREEN_TIMEOUT)",
             source,
             "a loop-start timestamp can precede lastInteraction and underflow unsigned subtraction",
+        )
+        self.assertIn(
+            "if (!otaManager.isUpdating() && millis() - lastInteraction >= SCREEN_TIMEOUT)",
+            source,
+            "OLED must remain visible while OTA progress is shown",
         )
 
 

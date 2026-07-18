@@ -30,6 +30,10 @@ def disconnected_snapshot():
         "actual_relay_level": None,
         "actual_fan_level": None,
         "outputs_unlocked": False,
+        "ota_state": "unavailable",
+        "ota_progress": None,
+        "wifi_connected": False,
+        "ota_ip": None,
     }
 
 
@@ -86,6 +90,7 @@ class Dashboard:
         "uptime_ms", "setpoint", "ntc", "ds18b20", "compressor", "fan",
         "fan_cooldown_remaining_ms", "sensor_fault", "display",
         "expected_relay_level", "expected_fan_level", "actual_relay_level", "actual_fan_level",
+        "ota_state", "ota_progress", "wifi_connected", "ota_ip",
     ]
 
     def __init__(self, root, port=None):

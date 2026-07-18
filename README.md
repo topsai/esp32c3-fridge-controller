@@ -89,6 +89,19 @@ python -m hil.dashboard
 
 详细协议、安全限制和场景说明见 [`docs/hil-testing.md`](docs/hil-testing.md)。
 
+## OTA 无线升级
+
+项目支持带密码的 ArduinoOTA 局域网升级。凭据只保存在 Git 忽略的
+`include/ota_config.local.h`；没有本地配置时 OTA 自动禁用，不影响正常温控。首次安装 OTA 固件必须使用 USB，之后可运行：
+
+```powershell
+$env:FRIDGE_OTA_PASSWORD="与本地配置相同的 OTA 密码"
+pio run -e esp32-c3-ota -t upload --upload-port fridge-controller.local
+```
+
+升级开始时压缩机安全停机，风扇继续完成 5 分钟散热；OLED 和 HIL 仪表板显示升级状态与进度。完整配置、安全说明和故障排查见
+[`docs/ota.md`](docs/ota.md)。
+
 ## 使用说明
 
 - 默认设定温度为 -10 °C，可调范围为 -30 °C 至 20 °C。

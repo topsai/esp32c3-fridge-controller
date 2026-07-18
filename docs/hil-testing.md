@@ -61,6 +61,8 @@ HIL 10 OUTPUTS LOCK
 - `expected_relay_level`、`expected_fan_level`：状态机希望输出的电平；
 - `actual_relay_level`、`actual_fan_level`：安全锁之后 ESP32 引脚的实际读回电平；
 - `outputs_unlocked`：是否允许真实输出跟随期望状态。
+- `ota_state`、`ota_progress`：OTA 服务状态和升级百分比；
+- `wifi_connected`、`ota_ip`：Wi-Fi 连接状态和局域网地址，不包含任何凭据。
 
 这样可以在不带动负载的情况下验证完整温控逻辑。
 

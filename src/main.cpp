@@ -8,6 +8,7 @@
 #include <math.h>
 #include <Preferences.h>
 #include "fridge_state_machine.h"
+#include "ota_manager.h"
 #ifdef FRIDGE_HIL
 #include "hil_protocol.h"
 #include "hil_runtime.h"
@@ -115,6 +116,14 @@ void setRelayPhysical(bool state) {
   fridgeOutputs = requestCompressor(fridgeOutputs, state, millis());
   applyOutputState();
 }
+
+void turnDisplayOnNow();
+
+void onOtaUpdateStart() {
+  // Use the existing output state machine so fan cooldown remains active.
+  setRelayPhysical(false);
+  turnDisplayOnNow();
+}
 // void setRelayPhysical(bool status) {
 //   digitalWrite(RELAY_PIN, status ? LOW : HIGH);  // 压缩机低电平有效
 //   digitalWrite(FAN_PIN, status ? HIGH : LOW);    // 风扇高电平有效
@@ -213,6 +222,27 @@ void drawLineNoRefresh(uint8_t y, uint8_t idx, const String& text) {
 // 更新 OLED 显示
 void updateOLED(float dsTemp, float ntcTemp) {
   if (!screenOn) return;
+  static bool showingOta = false;
+  if (otaManager.isUpdating()) {
+    display.clearDisplay();
+    display.setTextSize(1);
+    display.setTextColor(SSD1306_WHITE);
+    display.setCursor(0, 0);
+    display.print("OTA UPDATE");
+    display.setCursor(0, 12);
+    display.printf("Progress: %u%%", otaManager.progress());
+    display.setCursor(0, 24);
+    display.print("Compressor: OFF");
+    display.display();
+    showingOta = true;
+    return;
+  }
+  if (showingOta) {
+    display.clearDisplay();
+    for (String& line : lastLines) line = "";
+    oledDirty = true;
+    showingOta = false;
+  }
   // 计算运行时间
   unsigned long ms = millis();
   unsigned long totalMinutes = ms / 60000;
@@ -399,10 +429,14 @@ void sendHilStatus(uint32_t sequence) {
                 static_cast<unsigned long>(remaining));
   Serial.printf("\"sensor_fault\":%s,\"ntc_error_count\":%d,\"display\":\"%s\",\"outputs_unlocked\":%s,",
                 sensorFault ? "true" : "false", NTC_ERR_COUNT, screenOn ? "on" : "off", hil.outputsUnlocked ? "true" : "false");
-  Serial.printf("\"expected_relay_level\":%d,\"expected_fan_level\":%d,\"actual_relay_level\":%d,\"actual_fan_level\":%d}\n",
+  Serial.printf("\"expected_relay_level\":%d,\"expected_fan_level\":%d,\"actual_relay_level\":%d,\"actual_fan_level\":%d,",
                 fridgeOutputs.compressor == CompressorState::Running ? 1 : 0,
                 fridgeOutputs.fan == FanState::Off ? 0 : 1,
                 digitalRead(RELAY_PIN), digitalRead(FAN_PIN));
+  String otaIp = otaManager.ipAddress();
+  Serial.printf("\"ota_state\":\"%s\",\"ota_progress\":%u,\"wifi_connected\":%s,\"ota_ip\":\"%s\"}\n",
+                otaManager.stateName(), otaManager.progress(),
+                otaManager.wifiConnected() ? "true" : "false", otaIp.c_str());
 }
 
 void resetHilSession() {
@@ -599,12 +633,14 @@ void setup() {
     // 保存到 Flash
     needSave = true;  // 标记需要保存
   });
+  otaManager.begin(millis(), onOtaUpdateStart);
 }
 
 // ---------------- loop ----------------
 void loop() {
   static unsigned long lastNTCRead = 0;
   unsigned long now = millis();
+  otaManager.poll(now);
   // 更新按钮状态
   button1.tick();
   button2.tick();
@@ -638,7 +674,10 @@ void loop() {
   }
 
   // ---------------- 故障检测 ----------------
-  if (NTC_ERR_COUNT >= 10) {
+  if (otaManager.isUpdating()) {
+    // OTA start already stopped the compressor; do not let thermostat logic
+    // restart it while the flash partition is being written.
+  } else if (NTC_ERR_COUNT >= 10) {
     // NTC 失效
     sensorFault = true;
     setRelayPhysical(false);  // 故障停机
@@ -672,7 +711,7 @@ void loop() {
   }
 
   // ---------------- OLED 控制 ----------------
-  if (millis() - lastInteraction >= SCREEN_TIMEOUT) turnDisplayOffNow();
+  if (!otaManager.isUpdating() && millis() - lastInteraction >= SCREEN_TIMEOUT) turnDisplayOffNow();
   static unsigned long lastOLEDUpdate = 0;
   if (screenOn && now - lastOLEDUpdate >= 500) {
     updateOLED(lastDSTemp, lastNTCTemp);

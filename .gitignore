@@ -11,3 +11,4 @@ desktop.ini
 __pycache__/
 *.py[cod]
 hil/reports/
+include/ota_config.local.h

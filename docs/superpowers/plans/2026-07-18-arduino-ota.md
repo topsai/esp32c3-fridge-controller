@@ -27,10 +27,10 @@
 **Interfaces:**
 - Produces: `OtaState`, `OtaStatus`, `otaInitialStatus()`, `otaBeginConnecting()`, `otaConnectionTimedOut()`, `otaRetryDue()`.
 
-- [ ] Write compile-time assertions for disabled startup, connecting transition, timeout, and wrap-safe retry timing.
-- [ ] Run `pio run -e esp32-c3-devkitm-1` and verify failure because `ota_state_machine.h` is missing.
-- [ ] Implement the smallest pure header satisfying those assertions.
-- [ ] Re-run the build and verify the contract passes.
+- [x] Write compile-time assertions for disabled startup, connecting transition, timeout, and wrap-safe retry timing.
+- [x] Run `pio run -e esp32-c3-devkitm-1` and verify failure because `ota_state_machine.h` is missing.
+- [x] Implement the smallest pure header satisfying those assertions.
+- [x] Re-run the build and verify the contract passes.
 
 ### Task 2: Non-blocking ArduinoOTA runtime
 
@@ -46,9 +46,9 @@
 - Consumes: OTA transition contract from Task 1.
 - Produces: global `OtaManager` API: `begin(now, callback)`, `poll(now)`, `state()`, `stateName()`, `isUpdating()`, `wifiConnected()`, `progress()`, `errorCode()`, `ipAddress()`.
 
-- [ ] Add a Python repository-policy test requiring the local config to be ignored, example keys to exist, and the OTA upload environment to use `espota`; run it and verify failure.
-- [ ] Add optional configuration defaults, ignored local secrets, `esp32-c3-ota`, and the non-blocking manager with ArduinoOTA callbacks.
-- [ ] Run the policy test and all three PlatformIO builds.
+- [x] Add a Python repository-policy test requiring the local config to be ignored, example keys to exist, and the OTA upload environment to use `espota`; run it and verify failure.
+- [x] Add optional configuration defaults, ignored local secrets, `esp32-c3-ota`, and the non-blocking manager with ArduinoOTA callbacks.
+- [x] Run the policy test and all three PlatformIO builds.
 
 ### Task 3: Safe controller, OLED, and HIL integration
 
@@ -61,10 +61,10 @@
 - Consumes: `OtaManager` from Task 2.
 - Produces: safe OTA start, OTA progress OLED, and HIL keys `ota_state`, `ota_progress`, `wifi_connected`, `ota_ip`.
 
-- [ ] Extend the dashboard test first and verify it fails because OTA fields are absent.
-- [ ] Poll OTA from the normal loop, stop/lock out the compressor during upload, and render progress without blocking fan cooldown.
-- [ ] Add OTA telemetry to STATUS and make the always-open dashboard show the new fields when disconnected or connected.
-- [ ] Run Python tests and HIL/release builds.
+- [x] Extend the dashboard test first and verify it fails because OTA fields are absent.
+- [x] Poll OTA from the normal loop, stop/lock out the compressor during upload, and render progress without blocking fan cooldown.
+- [x] Add OTA telemetry to STATUS and make the always-open dashboard show the new fields when disconnected or connected.
+- [x] Run Python tests and HIL/release builds.
 
 ### Task 4: Documentation and release verification
 
@@ -76,8 +76,8 @@
 **Interfaces:**
 - Documents USB bootstrap, local secrets, serial upload, network upload, hostname discovery fallback, safety behavior, troubleshooting, rollback limitations, and HIL telemetry.
 
-- [ ] Document configuration and operational procedures without publishing secrets.
-- [ ] Run `python -m unittest discover -s tests -v` and `python -m unittest discover -s hil/tests -v`.
-- [ ] Clean-build release, HIL, and OTA environments and inspect firmware sizes.
-- [ ] Verify `include/ota_config.local.h` is ignored and absent from tracked files.
+- [x] Document configuration and operational procedures without publishing secrets.
+- [x] Run `python -m unittest discover -s tests -v` and `python -m unittest discover -s hil/tests -v`.
+- [x] Clean-build release, HIL, and OTA environments and inspect firmware sizes.
+- [x] Verify `include/ota_config.local.h` is ignored and absent from tracked files.
 - [ ] Review the diff, commit intentionally, push `main`, and verify the remote commit.
