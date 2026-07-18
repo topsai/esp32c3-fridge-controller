@@ -84,7 +84,7 @@ pio device monitor
 ```powershell
 pio run -e esp32-c3-hil -t upload
 python -m pip install -r hil/requirements.txt
-python -m hil.dashboard --port COM5
+python -m hil.dashboard
 ```
 
 详细协议、安全限制和场景说明见 [`docs/hil-testing.md`](docs/hil-testing.md)。

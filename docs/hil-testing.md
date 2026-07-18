@@ -24,10 +24,11 @@ pio run -e esp32-c3-hil
 pio run -e esp32-c3-hil -t upload
 pio device list
 python -m pip install -r hil/requirements.txt
-python -m hil.dashboard --port COM5
+python -m hil.dashboard
 ```
 
-将 `COM5` 替换为实际端口。波特率固定为 115200。
+未连接硬件时仪表板仍完整显示，以离线示例数据演示全部状态卡、曲线和控件。连接真实硬件时可从顶部选择端口，
+也可使用 `python -m hil.dashboard --port COM5` 自动尝试连接。波特率固定为 115200。
 
 ## 协议
 

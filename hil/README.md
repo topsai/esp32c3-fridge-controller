@@ -19,10 +19,12 @@ pio run -e esp32-c3-hil -t upload
 ## 仪表板
 
 ```powershell
-python -m hil.dashboard --port COM5
+python -m hil.dashboard
 ```
 
-仪表板每秒查询一次完整状态。真实输出默认锁定；解锁按钮需要人工确认，红色横幅表示实际 GPIO 可能动作。
+仪表板在没有串口设备时也会完整显示，并以 `OFFLINE DEMO` 标识示例状态、曲线和全部控件。可在页面顶部选择端口并连接，也可以用 `--port COM5` 启动后自动尝试连接。
+
+连接后每秒查询一次真实状态。真实输出默认锁定；解锁按钮需要人工确认，红色横幅表示实际 GPIO 可能动作。
 
 ## 命令行场景
 
