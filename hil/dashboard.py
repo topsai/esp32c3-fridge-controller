@@ -33,6 +33,14 @@ def disconnected_snapshot():
     }
 
 
+def temperature_button_command(direction):
+    if direction < 0:
+        return "BUTTON DOWN CLICK"
+    if direction > 0:
+        return "BUTTON UP CLICK"
+    raise ValueError("temperature button direction must be -1 or 1")
+
+
 class ConnectionController:
     """Own serial resources separately from widget construction."""
 
@@ -117,6 +125,12 @@ class Dashboard:
         ttk.Button(controls, text="Lock outputs", command=lambda: self.send("OUTPUTS LOCK")).pack(fill="x")
         ttk.Button(controls, text="Unlock outputs", command=self.unlock).pack(fill="x")
         ttk.Button(controls, text="Wake display", command=lambda: self.send("DISPLAY WAKE")).pack(fill="x")
+        temperature_controls = ttk.Frame(controls)
+        temperature_controls.pack(fill="x", pady=(10, 0))
+        ttk.Button(temperature_controls, text="温度 −0.5°C",
+                   command=lambda: self.send(temperature_button_command(-1))).pack(side="left", fill="x", expand=True)
+        ttk.Button(temperature_controls, text="温度 +0.5°C",
+                   command=lambda: self.send(temperature_button_command(1))).pack(side="left", fill="x", expand=True, padx=(4, 0))
         self.command = ttk.Entry(controls, width=38)
         self.command.pack(fill="x", pady=(10, 0))
         ttk.Button(controls, text="Send command", command=self.send_entry).pack(fill="x")

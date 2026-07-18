@@ -49,6 +49,9 @@ HIL 9 DISPLAY WAKE
 HIL 10 OUTPUTS LOCK
 ```
 
+仪表板提供 `温度 −0.5°C`、`温度 +0.5°C` 两个按钮，调用上述 `BUTTON DOWN CLICK` 和
+`BUTTON UP CLICK` 指令。设定范围、熄屏唤醒和 NVS 保存均继续由主固件处理。
+
 支持的完整命令见设计规格。温度注入进入原有 NTC 滤波、故障累计和温控路径；DS 注入进入显示状态路径。
 
 ## 输出锁

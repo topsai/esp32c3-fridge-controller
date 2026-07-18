@@ -1,6 +1,6 @@
 import unittest
 
-from hil.dashboard import ConnectionController, disconnected_snapshot
+from hil.dashboard import ConnectionController, disconnected_snapshot, temperature_button_command
 
 
 class ConnectionControllerTest(unittest.TestCase):
@@ -28,6 +28,12 @@ class ConnectionControllerTest(unittest.TestCase):
         self.assertIsNone(snapshot["ds18b20"])
         self.assertIsNone(snapshot["compressor"])
         self.assertFalse(snapshot["outputs_unlocked"])
+
+    def test_temperature_buttons_use_physical_button_commands(self):
+        self.assertEqual("BUTTON DOWN CLICK", temperature_button_command(-1))
+        self.assertEqual("BUTTON UP CLICK", temperature_button_command(1))
+        with self.assertRaises(ValueError):
+            temperature_button_command(0)
 
 
 if __name__ == "__main__":
