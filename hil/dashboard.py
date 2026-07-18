@@ -34,6 +34,9 @@ def disconnected_snapshot():
         "ota_progress": None,
         "wifi_connected": False,
         "ota_ip": None,
+        "wifi_state": "unavailable",
+        "wifi_provisioning": False,
+        "wifi_ap_ssid": None,
     }
 
 
@@ -91,6 +94,7 @@ class Dashboard:
         "fan_cooldown_remaining_ms", "sensor_fault", "display",
         "expected_relay_level", "expected_fan_level", "actual_relay_level", "actual_fan_level",
         "ota_state", "ota_progress", "wifi_connected", "ota_ip",
+        "wifi_state", "wifi_provisioning", "wifi_ap_ssid",
     ]
 
     def __init__(self, root, port=None):

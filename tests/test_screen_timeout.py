@@ -20,9 +20,9 @@ class ScreenTimeoutRegressionTest(unittest.TestCase):
             "a loop-start timestamp can precede lastInteraction and underflow unsigned subtraction",
         )
         self.assertIn(
-            "if (!otaManager.isUpdating() && millis() - lastInteraction >= SCREEN_TIMEOUT)",
+            "if (!otaManager.isUpdating() && !wifiProvisioningManager.isPortalActive() &&",
             source,
-            "OLED must remain visible while OTA progress is shown",
+            "OLED must remain visible while OTA or Wi-Fi provisioning is shown",
         )
 
 

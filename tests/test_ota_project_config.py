@@ -41,6 +41,9 @@ class OtaProjectConfigTest(unittest.TestCase):
         self.assertIn("WIFI_PORTAL_TIMEOUT_MS = 60000u", state)
         self.assertIn("setConfigPortalBlocking(false)", manager)
         self.assertNotIn("autoConnect(", manager)
+        self.assertIn("setWebServerCallback", manager)
+        for blocked_route in ('"/update"', '"/u"', '"/erase"', '"/restart"'):
+            self.assertIn(blocked_route, manager)
 
     def test_ota_manager_does_not_own_wifi_connections(self):
         source = (ROOT / "src" / "ota_manager.cpp").read_text(encoding="utf-8")

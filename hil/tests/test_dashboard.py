@@ -22,7 +22,7 @@ class ConnectionControllerTest(unittest.TestCase):
             "fan_cooldown_remaining_ms", "sensor_fault", "display",
             "expected_relay_level", "expected_fan_level", "actual_relay_level",
             "actual_fan_level", "outputs_unlocked", "ota_state", "ota_progress",
-            "wifi_connected", "ota_ip",
+            "wifi_connected", "ota_ip", "wifi_state", "wifi_provisioning", "wifi_ap_ssid",
         }
         self.assertTrue(expected.issubset(snapshot))
         self.assertIsNone(snapshot["ntc"])
@@ -31,6 +31,8 @@ class ConnectionControllerTest(unittest.TestCase):
         self.assertFalse(snapshot["outputs_unlocked"])
         self.assertEqual("unavailable", snapshot["ota_state"])
         self.assertFalse(snapshot["wifi_connected"])
+        self.assertEqual("unavailable", snapshot["wifi_state"])
+        self.assertFalse(snapshot["wifi_provisioning"])
 
     def test_temperature_buttons_use_physical_button_commands(self):
         self.assertEqual("BUTTON DOWN CLICK", temperature_button_command(-1))

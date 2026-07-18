@@ -23,6 +23,20 @@ void WifiProvisioningManager::begin(uint32_t now) {
   manager_.setShowInfoUpdate(false);
   const char* menu[] = {"wifi", "exit"};
   manager_.setMenu(menu, 2u);
+  manager_.setWebServerCallback([this]() {
+    const std::function<void()> deny = [this]() {
+      manager_.server->send(404, "text/plain", "Not found");
+    };
+    // Register these before WiFiManager's built-in handlers so the temporary
+    // provisioning AP cannot be used for firmware or device management.
+    manager_.server->on("/update", deny);
+    manager_.server->on("/u", deny);
+    manager_.server->on("/erase", deny);
+    manager_.server->on("/restart", deny);
+    manager_.server->on("/info", deny);
+    manager_.server->on("/param", deny);
+    manager_.server->on("/close", deny);
+  });
 
   WiFi.mode(WIFI_STA);
   WiFi.setAutoReconnect(false);

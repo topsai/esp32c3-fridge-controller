@@ -9,6 +9,7 @@
 #include <Preferences.h>
 #include "fridge_state_machine.h"
 #include "ota_manager.h"
+#include "wifi_provisioning_manager.h"
 #ifdef FRIDGE_HIL
 #include "hil_protocol.h"
 #include "hil_runtime.h"
@@ -223,6 +224,7 @@ void drawLineNoRefresh(uint8_t y, uint8_t idx, const String& text) {
 void updateOLED(float dsTemp, float ntcTemp) {
   if (!screenOn) return;
   static bool showingOta = false;
+  static bool showingProvisioning = false;
   if (otaManager.isUpdating()) {
     display.clearDisplay();
     display.setTextSize(1);
@@ -237,11 +239,29 @@ void updateOLED(float dsTemp, float ntcTemp) {
     showingOta = true;
     return;
   }
-  if (showingOta) {
+  if (wifiProvisioningManager.isPortalActive()) {
+    display.clearDisplay();
+    display.setTextSize(1);
+    display.setTextColor(SSD1306_WHITE);
+    display.setCursor(0, 0);
+    display.print("WiFi Setup");
+    display.setCursor(0, 8);
+    display.print(wifiProvisioningManager.apSsid());
+    display.setCursor(0, 16);
+    display.print("P:");
+    display.print(wifiProvisioningManager.apPassword());
+    display.setCursor(0, 24);
+    display.print("192.168.4.1");
+    display.display();
+    showingProvisioning = true;
+    return;
+  }
+  if (showingOta || showingProvisioning) {
     display.clearDisplay();
     for (String& line : lastLines) line = "";
     oledDirty = true;
     showingOta = false;
+    showingProvisioning = false;
   }
   // 计算运行时间
   unsigned long ms = millis();
@@ -433,10 +453,14 @@ void sendHilStatus(uint32_t sequence) {
                 fridgeOutputs.compressor == CompressorState::Running ? 1 : 0,
                 fridgeOutputs.fan == FanState::Off ? 0 : 1,
                 digitalRead(RELAY_PIN), digitalRead(FAN_PIN));
-  String otaIp = otaManager.ipAddress();
-  Serial.printf("\"ota_state\":\"%s\",\"ota_progress\":%u,\"wifi_connected\":%s,\"ota_ip\":\"%s\"}\n",
+  String otaIp = wifiProvisioningManager.ipAddress();
+  String wifiApSsid = wifiProvisioningManager.isPortalActive() ? wifiProvisioningManager.apSsid() : String();
+  Serial.printf("\"ota_state\":\"%s\",\"ota_progress\":%u,\"wifi_connected\":%s,\"ota_ip\":\"%s\",",
                 otaManager.stateName(), otaManager.progress(),
-                otaManager.wifiConnected() ? "true" : "false", otaIp.c_str());
+                wifiProvisioningManager.connected() ? "true" : "false", otaIp.c_str());
+  Serial.printf("\"wifi_state\":\"%s\",\"wifi_provisioning\":%s,\"wifi_ap_ssid\":\"%s\"}\n",
+                wifiProvisioningManager.stateName(),
+                wifiProvisioningManager.isPortalActive() ? "true" : "false", wifiApSsid.c_str());
 }
 
 void resetHilSession() {
@@ -633,6 +657,7 @@ void setup() {
     // 保存到 Flash
     needSave = true;  // 标记需要保存
   });
+  wifiProvisioningManager.begin(millis());
   otaManager.begin(millis(), onOtaUpdateStart);
 }
 
@@ -640,10 +665,19 @@ void setup() {
 void loop() {
   static unsigned long lastNTCRead = 0;
   unsigned long now = millis();
+  static bool previousPortalActive = wifiProvisioningManager.isPortalActive();
+  wifiProvisioningManager.poll(now);
   otaManager.poll(now);
+  const bool portalActive = wifiProvisioningManager.isPortalActive();
+  if (portalActive || (previousPortalActive && !portalActive)) turnDisplayOnNow();
+  previousPortalActive = portalActive;
   // 更新按钮状态
-  button1.tick();
-  button2.tick();
+  const bool bothButtonsPressed = digitalRead(SWA) == LOW && digitalRead(SWB) == LOW;
+  const bool consumeTemperatureButtons = wifiProvisioningManager.pollButtons(bothButtonsPressed, otaManager.isUpdating(), now);
+  if (!consumeTemperatureButtons) {
+    button1.tick();
+    button2.tick();
+  }
 #ifdef FRIDGE_HIL
   pollHil();
 #endif
@@ -711,7 +745,8 @@ void loop() {
   }
 
   // ---------------- OLED 控制 ----------------
-  if (!otaManager.isUpdating() && millis() - lastInteraction >= SCREEN_TIMEOUT) turnDisplayOffNow();
+  if (!otaManager.isUpdating() && !wifiProvisioningManager.isPortalActive() &&
+      millis() - lastInteraction >= SCREEN_TIMEOUT) turnDisplayOffNow();
   static unsigned long lastOLEDUpdate = 0;
   if (screenOn && now - lastOLEDUpdate >= 500) {
     updateOLED(lastDSTemp, lastNTCTemp);
