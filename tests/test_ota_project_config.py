@@ -33,6 +33,15 @@ class OtaProjectConfigTest(unittest.TestCase):
         self.assertIn("upload_protocol = espota", config)
         self.assertIn("--auth=$sysenv{FRIDGE_OTA_PASSWORD}", config)
 
+    def test_wifi_provisioning_uses_fixed_nonblocking_dependency(self):
+        config = (ROOT / "platformio.ini").read_text(encoding="utf-8")
+        manager = (ROOT / "src" / "wifi_provisioning_manager.cpp").read_text(encoding="utf-8")
+        state = (ROOT / "include" / "wifi_provisioning_state.h").read_text(encoding="utf-8")
+        self.assertIn("tzapu/WiFiManager @ 2.0.17", config)
+        self.assertIn("WIFI_PORTAL_TIMEOUT_MS = 60000u", state)
+        self.assertIn("setConfigPortalBlocking(false)", manager)
+        self.assertNotIn("autoConnect(", manager)
+
 
 if __name__ == "__main__":
     unittest.main()
