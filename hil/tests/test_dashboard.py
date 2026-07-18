@@ -1,6 +1,6 @@
 import unittest
 
-from hil.dashboard import ConnectionController, offline_snapshot
+from hil.dashboard import ConnectionController, disconnected_snapshot
 
 
 class ConnectionControllerTest(unittest.TestCase):
@@ -15,8 +15,8 @@ class ConnectionControllerTest(unittest.TestCase):
         self.assertEqual([], opened)
         self.assertFalse(controller.connected)
 
-    def test_offline_snapshot_contains_every_dashboard_field(self):
-        snapshot = offline_snapshot()
+    def test_disconnected_snapshot_contains_fields_without_fake_measurements(self):
+        snapshot = disconnected_snapshot()
         expected = {
             "uptime_ms", "setpoint", "ntc", "ds18b20", "compressor", "fan",
             "fan_cooldown_remaining_ms", "sensor_fault", "display",
@@ -24,6 +24,10 @@ class ConnectionControllerTest(unittest.TestCase):
             "actual_fan_level", "outputs_unlocked",
         }
         self.assertTrue(expected.issubset(snapshot))
+        self.assertIsNone(snapshot["ntc"])
+        self.assertIsNone(snapshot["ds18b20"])
+        self.assertIsNone(snapshot["compressor"])
+        self.assertFalse(snapshot["outputs_unlocked"])
 
 
 if __name__ == "__main__":

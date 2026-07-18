@@ -13,22 +13,22 @@ from hil.runner import ScenarioRunner, load_scenario
 from hil.transport import SerialTransport
 
 
-def offline_snapshot():
-    """Return representative values used while no controller is connected."""
+def disconnected_snapshot():
+    """Return an empty but structurally complete disconnected state."""
     return {
-        "uptime_ms": 0,
-        "setpoint": -10.0,
-        "ntc": -8.5,
-        "ds18b20": -8.2,
-        "compressor": "off",
-        "fan": "cooldown",
-        "fan_cooldown_remaining_ms": 281000,
-        "sensor_fault": False,
-        "display": "on",
-        "expected_relay_level": 0,
-        "expected_fan_level": 1,
-        "actual_relay_level": 0,
-        "actual_fan_level": 0,
+        "uptime_ms": None,
+        "setpoint": None,
+        "ntc": None,
+        "ds18b20": None,
+        "compressor": None,
+        "fan": None,
+        "fan_cooldown_remaining_ms": None,
+        "sensor_fault": None,
+        "display": None,
+        "expected_relay_level": None,
+        "expected_fan_level": None,
+        "actual_relay_level": None,
+        "actual_fan_level": None,
         "outputs_unlocked": False,
     }
 
@@ -69,7 +69,7 @@ class ConnectionController:
 
     def command(self, command, timeout=2.0):
         if self.client is None:
-            raise ConnectionError("offline: select a serial port and connect")
+            raise ConnectionError("disconnected: select a serial port and connect")
         return self.client.command(command, timeout=timeout)
 
 
@@ -87,7 +87,6 @@ class Dashboard:
         self.events = queue.Queue()
         self.scenario_running = False
         self.history = {"time": [], "ntc": [], "ds18b20": [], "setpoint": []}
-        self.demo_seconds = 0
 
         root.title("Fridge HIL Dashboard")
         connection_bar = ttk.Frame(root, padding=10)
@@ -100,10 +99,10 @@ class Dashboard:
         ttk.Button(connection_bar, text="Refresh", command=self.refresh_ports).pack(side="left")
         ttk.Button(connection_bar, text="Connect", command=self.connect).pack(side="left", padx=4)
         ttk.Button(connection_bar, text="Disconnect", command=self.disconnect).pack(side="left")
-        self.connection_label = ttk.Label(connection_bar, text="Offline demo")
+        self.connection_label = ttk.Label(connection_bar, text="Disconnected")
         self.connection_label.pack(side="right")
 
-        self.banner = tk.Label(root, text="OFFLINE DEMO · OUTPUTS LOCKED", fg="white", bg="gray", font=("Segoe UI", 14, "bold"))
+        self.banner = tk.Label(root, text="DISCONNECTED · OUTPUTS LOCKED", fg="white", bg="gray", font=("Segoe UI", 14, "bold"))
         self.banner.pack(fill="x")
         grid = ttk.Frame(root, padding=10)
         grid.pack(fill="both", expand=True)
@@ -140,7 +139,7 @@ class Dashboard:
 
         root.protocol("WM_DELETE_WINDOW", self.close)
         self.refresh_ports()
-        self.render_snapshot(offline_snapshot(), offline=True)
+        self.render_snapshot(disconnected_snapshot(), connected=False)
         self.poll()
         self.drain_events()
         if port:
@@ -155,21 +154,21 @@ class Dashboard:
     def connect(self):
         port = self.port.get().strip()
         if not port:
-            self.write_log({"status": "offline", "message": "No serial port selected"})
+            self.write_log({"status": "disconnected", "message": "No serial port selected"})
             return
         try:
             response = self.connection.connect(port)
             self.connection_label.configure(text=f"Connected: {port}")
             self.write_log(response)
         except Exception as error:
-            self.connection_label.configure(text="Offline demo")
-            self.write_log({"status": "offline", "error": str(error)})
+            self.connection_label.configure(text="Disconnected")
+            self.write_log({"status": "disconnected", "error": str(error)})
 
     def disconnect(self):
         self.connection.disconnect()
-        self.connection_label.configure(text="Offline demo")
-        self.render_snapshot(offline_snapshot(), offline=True)
-        self.write_log({"status": "offline"})
+        self.connection_label.configure(text="Disconnected")
+        self.render_snapshot(disconnected_snapshot(), connected=False)
+        self.write_log({"status": "disconnected"})
 
     def send(self, command):
         try:
@@ -182,7 +181,7 @@ class Dashboard:
 
     def unlock(self):
         if not self.connection.connected:
-            self.write_log({"error": "offline: outputs cannot be unlocked"})
+            self.write_log({"error": "disconnected: outputs cannot be unlocked"})
         elif messagebox.askyesno("Dangerous output", "Confirm low-voltage test setup and unlock real GPIO outputs?"):
             self.send("OUTPUTS UNLOCK")
 
@@ -194,7 +193,7 @@ class Dashboard:
     def run_scenario(self):
         path = self.scenario.get()
         if not self.connection.connected:
-            self.write_log({"error": "offline: connect before running a scenario"})
+            self.write_log({"error": "disconnected: connect before running a scenario"})
             return
         if not path or self.scenario_running:
             return
@@ -214,24 +213,29 @@ class Dashboard:
         if self.connection.connected and not self.scenario_running:
             response = self.send("STATUS")
             if response:
-                self.render_snapshot(response, offline=False)
-        elif not self.connection.connected:
-            self.demo_seconds += 1
-            snapshot = offline_snapshot()
-            snapshot["uptime_ms"] = self.demo_seconds * 1000
-            self.render_snapshot(snapshot, offline=True)
+                self.render_snapshot(response, connected=True)
         self.root.after(1000, self.poll)
 
-    def render_snapshot(self, response, offline):
+    def render_snapshot(self, response, connected):
         for key, label in self.values.items():
-            label.configure(text=str(response.get(key, "—")))
+            value = response.get(key)
+            label.configure(text="—" if value is None else str(value))
         unlocked = response.get("outputs_unlocked", False)
-        if offline:
-            self.banner.configure(text="OFFLINE DEMO · OUTPUTS LOCKED", bg="gray")
+        if not connected:
+            self.banner.configure(text="DISCONNECTED · OUTPUTS LOCKED", bg="gray")
+            self.clear_chart()
         else:
             self.banner.configure(text="OUTPUTS UNLOCKED" if unlocked else "OUTPUTS LOCKED",
                                   bg="red" if unlocked else "green")
-        self.update_chart(response)
+            self.update_chart(response)
+
+    def clear_chart(self):
+        self.history = {"time": [], "ntc": [], "ds18b20": [], "setpoint": []}
+        for line in self.lines.values():
+            line.set_data([], [])
+        self.axis.relim()
+        self.axis.autoscale_view()
+        self.chart.draw_idle()
 
     def update_chart(self, response):
         self.history["time"].append(float(response.get("uptime_ms", 0)) / 1000.0)

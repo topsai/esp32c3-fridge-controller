@@ -27,7 +27,7 @@ python -m pip install -r hil/requirements.txt
 python -m hil.dashboard
 ```
 
-未连接硬件时仪表板仍完整显示，以离线示例数据演示全部状态卡、曲线和控件。连接真实硬件时可从顶部选择端口，
+未连接硬件时仪表板仍完整显示全部状态字段、曲线区域和控件，实时字段显示为不可用且不生成模拟数据。连接真实硬件时可从顶部选择端口，
 也可使用 `python -m hil.dashboard --port COM5` 自动尝试连接。波特率固定为 115200。
 
 ## 协议
